@@ -1,0 +1,33 @@
+# Mapování DH ID na HLTB ID (a Title) pro hry, u kterých se název přesně
+# neshoduje, nebo existuje na HLTB více her se stejným názvem. Položka má
+# tvar:
+# DH_ID (string):
+#   'hltb_id': HLTB_ID (string)
+#   'hltb_title': HLTB_TITLE (string)
+# Položky, u kterých se neočekává nález, nebo je uživatel úmyslně chce
+# ignorovat, lze přidat do klíče 'ignored' ve tvaru:
+# 'ignored':
+#   - DH_ID (string)
+'ignored':
+  - '16849' # Galaxy Trucker: Extended Edition
+  - '16160' # EVERSPACE: Encounters
+  - '3688'  # Moorhuhn X
+  - '764'   # Bulánci
+'17936':
+  'hltb_id': '71090'
+  'hltb_title': 'Pilgrims (2019)'
+'14984':
+  'hltb_id': '23051'
+  'hltb_title': 'FRAMED (2014)'
+'14759':
+  'hltb_id': '34553'
+  'hltb_title': 'Grip'
+'12108':
+  'hltb_id': '39367'
+  'hltb_title': 'Everspace'
+'12856':
+  'hltb_id': '7093'
+  'hltb_title': 'Planescape: Torment'
+'12578':
+  'hltb_id': '44590'
+  'hltb_title': 'Prey (2017)'

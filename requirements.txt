@@ -1,0 +1,8 @@
+howlongtobeatpy
+beautifulsoup4
+pyyaml
+colorama
+pyexcel
+pyexcel-ods3
+pyexcel-ezodf
+openpyxl
