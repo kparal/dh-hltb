@@ -323,10 +323,6 @@ class HLTB():
             cacheitem['hltb_title'] = game.title
 
             self.cache[game.dh_id] = cacheitem
-        # drop outdated cache items, to avoid growing cache indefinitely
-        for dh_id, cacheitem in self.cache.copy().items():
-            if self.needs_refresh(cacheitem['hltb_query_ts']):
-                del self.cache[dh_id]
         # save cache
         os.makedirs(self.args.cachedir, exist_ok=True)
         with open(self.cache_filename, mode='w') as cache_file:
@@ -344,6 +340,10 @@ class HLTB():
             self.cache = yaml.safe_load(
                 cache_file.read()
             )
+        # drop outdated cache items, to avoid growing cache indefinitely
+        for dh_id, cacheitem in self.cache.copy().items():
+            if self.needs_refresh(cacheitem['hltb_query_ts']):
+                del self.cache[dh_id]
         # update current game list
         for game in self.games:
             cachevals = self.cache.get(game.dh_id)
