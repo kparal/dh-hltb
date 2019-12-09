@@ -409,6 +409,15 @@ class HLTB():
     def mins_to_hours(minutes: float) -> float:
         return round(minutes / 60, ndigits=1)
 
+    @staticmethod
+    def bool2str(value: bool) -> str:
+        if value == True:
+            return 'ano'
+        elif value == False:
+            return 'ne'
+        else:
+            return str(value)
+
     def export_table_data(self) -> List[List[str]]:
         link_template = 'https://www.databaze-her.cz/h{}'
         header = ['Název', 'Rok', 'HLTB Main', 'HLTB Extra',
@@ -422,7 +431,7 @@ class HLTB():
             if game.dh_id in self.ignored and not self.args.include_ignored:
                 continue
             link = link_template.format(game.dh_id)
-            finished = game.finished_ts or str(game.finished)
+            finished = game.finished_ts or self.bool2str(game.finished)
             # empty time estimates are not helpful. If we don't have any number,
             # use the closest one instead.
             time_main = game.time_main or game.time_extra or game.time_complete
@@ -430,7 +439,8 @@ class HLTB():
             time_complete = game.time_complete or game.time_extra or game.time_main
             table.append(
                 [game.title, game.year, time_main, time_extra, time_complete,
-                str(game.wantplay), finished, str(game.owned), link]
+                self.bool2str(game.wantplay), finished,
+                self.bool2str(game.owned), link]
             )
 
         return table
