@@ -6,7 +6,7 @@ tracked at databaze-her.cz.
 Language note: All user-facing strings are written in Czech, because this script
 has little use to anyone who doesn't understand Czech language.
 
-Author: Kamil Páral <https://github.com/kparal/dh-htlb>
+Author: Kamil Páral <https://github.com/kparal/dh-hltb>
 License: GNU AGPLv3+, see LICENSE file
 '''
 import sys
