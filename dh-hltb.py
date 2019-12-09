@@ -20,6 +20,7 @@ import csv
 import collections
 from typing import List
 from unicodedata import numeric
+import enum
 # external modules
 import yaml
 from bs4 import BeautifulSoup
@@ -79,6 +80,7 @@ ignorovat).
 
     return args
 
+
 @dataclasses.dataclass
 class Game:
     dh_id: str = None
@@ -103,6 +105,7 @@ class Game:
         'time_complete',
         'hltb_query_ts',
     ]
+
 
 def parse_dh(html_filename: str) -> List[Game]:
     print(f'Procházím {html_filename} ...')
@@ -171,8 +174,9 @@ def create_dh_gamelist(html_filenames: List[str]) -> List[Game]:
                 gamesdict[game.dh_id] = merged_game
             else:
                 gamesdict[game.dh_id] = game
-    print(f'Celkem sesbíráno {len(gamesdict)} her')
+    colorprint(Color.INFO, f'Celkem sesbíráno {len(gamesdict)} her')
     return gamesdict.values()
+
 
 class HLTB():
     mapping_filename: str = None
@@ -206,16 +210,16 @@ class HLTB():
             raise HLTBError
 
         if game.dh_id in self.ignored:
-            printout = print_expected
-            print_error_details = print_expected
+            print_args = {'color': Color.INFO}
+            details_print_args = print_args
             prefix = 'IGNOROVÁNO: '
         else:
-            printout = print_error
-            print_error_details = print_error
+            print_args = {'color': Color.ERROR, 'file': sys.stderr}
+            details_print_args = {'color': Color.ERROR_DETAILS, 'file': sys.stderr}
             prefix = ''
 
         if not results:
-            printout(f'{prefix}ŽÁDNÝ NÁLEZ! (DH ID: {game.dh_id})')
+            colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ! (DH ID: {game.dh_id})', **print_args)
             return None
 
         results = sorted(results, key=lambda x: x.similarity, reverse=True)
@@ -223,16 +227,20 @@ class HLTB():
         if hltb_id:
             matches = [result for result in results if result.game_id == hltb_id]
             if len(matches) != 1:
-                print_error(f'OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ, ZÍSKÁNO {len(matches)}:')
+                colorprint(msg=f'OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ, ZÍSKÁNO {len(matches)}:',
+                    **print_args)
                 for match in matches:
-                    print_error_details(self.format_result(match))
+                    colorprint(msg=self.format_result(match), **print_args)
             return matches[0]
 
         best_result = results[0]
         if best_result.similarity != 1 or best_result.game_name != game.title:
-            printout(f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ! (DH ID: {game.dh_id})')
-            for result in results:
-                print_error_details(self.format_result(result))
+            colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ! (DH ID: {game.dh_id})',
+                **print_args)
+            candidates = '\n\n'.join(
+                [self.format_result(result) for result in results]
+            )
+            colorprint(msg=candidates, **details_print_args)
             return None
 
         return best_result
@@ -263,7 +271,8 @@ class HLTB():
                     time_main = self.mins_to_hours(time_main)
                 game.time_main = time_main
         else:
-            print_expected(f'Ignoruji herní režim: {hltb_result.gameplay_main_label}')
+            colorprint(Color.INFO,
+                f'Ignoruji herní režim: {hltb_result.gameplay_main_label}')
 
         if hltb_result.gameplay_main_extra_label in supported_labels:
             time_extra = self.unicode_fraction(hltb_result.gameplay_main_extra)
@@ -272,7 +281,8 @@ class HLTB():
                     time_extra = self.mins_to_hours(time_extra)
                 game.time_extra = time_extra
         else:
-            print_expected(f'Ignoruji herní režim: {hltb_result.gameplay_main_extra_label}')
+            colorprint(Color.INFO,
+                f'Ignoruji herní režim: {hltb_result.gameplay_main_extra_label}')
 
         if hltb_result.gameplay_completionist_label in supported_labels:
             time_complete = self.unicode_fraction(hltb_result.gameplay_completionist)
@@ -281,7 +291,8 @@ class HLTB():
                     time_complete = self.mins_to_hours(time_complete)
                 game.time_complete = time_complete
         else:
-            print_expected(f'Ignoruji herní režim: {hltb_result.gameplay_completionist_label}')
+            colorprint(Color.INFO,
+                f'Ignoruji herní režim: {hltb_result.gameplay_completionist_label}')
 
         game.hltb_id = hltb_result.game_id
         game.hltb_query_ts = datetime.datetime.now(
@@ -435,7 +446,8 @@ class HLTB():
             raise RuntimeError("Nepodporovaná přípona souboru (nemělo by se stát): "
                 f'{self.args.output}')
 
-        print('Výsledný soubor uložen: {}'.format(os.path.abspath(self.args.output)))
+        colorprint(Color.SUCCESS, 'Výsledný soubor uložen: {} ✔'.format(
+            os.path.abspath(self.args.output)))
 
     def export_csv(self) -> None:
         print(f'Ukládám výsledky do CSV ...')
@@ -503,17 +515,23 @@ class HLTB():
 class HLTBError(BaseException):
     pass
 
+
+class Color(enum.Enum):
+    ERROR = colorama.Fore.RED + colorama.Style.BRIGHT
+    ERROR_DETAILS = colorama.Fore.RED
+    INFO = colorama.Fore.BLUE + colorama.Style.BRIGHT
+    SUCCESS = colorama.Fore.GREEN + colorama.Style.BRIGHT
+
+
+def colorprint(color: Color, msg: str, **kwargs):
+    print(f'{color.value}{msg}', **kwargs)
+
+def print_error(msg: str):
+    colorprint(Color.ERROR, msg, file=sys.stderr)
+
 def find_prog_dir() -> str:
     return os.path.dirname(os.path.realpath(__file__))
 
-def print_error(msg: str):
-    print(f'{colorama.Fore.RED}{colorama.Style.BRIGHT}{msg}', file=sys.stderr)
-
-def print_error_details(msg: str):
-    print(f'{colorama.Fore.RED}{msg}', file=sys.stderr)
-
-def print_expected(msg: str):
-    print(f'{colorama.Fore.BLUE}{colorama.Style.BRIGHT}{msg}', file=sys.stderr)
 
 if __name__ == '__main__':
     args = parse_args()
