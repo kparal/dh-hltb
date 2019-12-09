@@ -477,7 +477,7 @@ class HLTB():
         sheet.auto_filter.ref = sheet.dimensions
         # add Sums
         sheet.append([])
-        sheet.append(['Celkem:', '', '=SUBTOTAL(109,C:C)', '=SUBTOTAL(109,D:D)',
+        sheet.append(['Celkem (hodiny):', '', '=SUBTOTAL(109,C:C)', '=SUBTOTAL(109,D:D)',
             '=SUBTOTAL(109,E:E)'])
         sheet.cell(sheet.max_row, 1).font = openpyxl.styles.Font(bold=True)
         # set styles
