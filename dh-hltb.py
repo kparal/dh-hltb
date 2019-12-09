@@ -156,8 +156,8 @@ def merge_game(entry1: Game, entry2: Game) -> Game:
     '''If there are two entries of the same game (same dh_id), try to merge
     their values and return the union of their data.'''
     if entry1.dh_id != entry2.dh_id:
-        raise ValueError(f'Trying to merge two different games:\n{entry1}\n'
-            f'and\n{entry2}')
+        raise ValueError(f'Pokus o sjednocení dvou různých her:\n{entry1}\n'
+            f'a\n{entry2}')
     entry = copy.deepcopy(entry1)
     for attr, val in entry1.__dict__.items():
         if val is None:
