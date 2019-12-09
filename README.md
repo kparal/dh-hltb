@@ -4,6 +4,9 @@ A language note: This script is tied to [databaze-her.cz] website and as such it
 
 Tento skript vezme seznam her uložený z [databaze-her.cz] a pro každou hru získá údaje z [howlongtobeat.com]. Poté vygeneruje tabulkový dokument (xlsx/ods/csv) a uloží do něj všechny údaje. Hry lze filtrovat a řadit dle různých parametrů (název, rok vydání, HowLongToBeat údaje, chci hrát, dohráno, vlastněno).
 
+Zde je příklad, jak může vypadat výsledný dokument:
+![ukázkový dokument](example-stats.png)
+
 Skript by měl být multiplatformní, ale ozkoušen je pouze na Linuxu. Běžný proces zprovoznění je:
 ```bash
 $ git clone https://github.com/kparal/dh-hltb.git
