@@ -48,7 +48,7 @@ Se dvěma uloženými soubory pak lze spustit skript takto:
 $ ./dh-hltb.py chci.html dohrane.html
 
 Pro hry, které se na DH jmenují jinak než na HLTB, je nutné vytvořit záznam v \
-souboru `mapping.yaml`. Zkopírujte `mapping.yaml.example` jako `mapping.yaml` \
+souboru 'mapping.yaml'. Zkopírujte 'example-mapping.yaml' jako 'mapping.yaml' \
 a upravte tak, aby obsahoval hry, na které se dotazujete (případně chcete \
 ignorovat).
 ''')

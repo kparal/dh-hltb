@@ -1,3 +1,6 @@
+# Pro použití v programu zkopírujte soubor jako 'mapping.yaml' a upravte dle
+# svých potřeb.
+# -----
 # Mapování DH ID na HLTB ID (a Title) pro hry, u kterých se název přesně
 # neshoduje, nebo existuje na HLTB více her se stejným názvem. Položka má
 # tvar:
