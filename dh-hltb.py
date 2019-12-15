@@ -21,6 +21,7 @@ import collections
 from typing import List
 from unicodedata import numeric
 import enum
+import time
 # external modules
 import yaml
 from bs4 import BeautifulSoup
@@ -186,6 +187,7 @@ class HLTB():
     cache: dict = {}
     mapping: dict = {}
     ignored: List[str] = []
+    error_sleep_delay: float = 1
 
     def __init__(self, args, games: List[Game]):
         self.args = args
@@ -210,6 +212,7 @@ class HLTB():
             raise HLTBError
 
         if game.dh_id in self.ignored:
+            # this happens if you force-include ignored games for querying
             print_args = {'color': Color.INFO}
             details_print_args = print_args
             prefix = 'IGNOROVÁNO: '
@@ -220,6 +223,7 @@ class HLTB():
 
         if not results:
             colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ! (DH ID: {game.dh_id})', **print_args)
+            time.sleep(self.error_sleep_delay)
             return None
 
         results = sorted(results, key=lambda x: x.similarity, reverse=True)
@@ -227,11 +231,15 @@ class HLTB():
         if hltb_id:
             matches = [result for result in results if result.game_id == hltb_id]
             if len(matches) != 1:
-                colorprint(msg=f'OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ, ZÍSKÁNO {len(matches)}:',
+                colorprint(msg='OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ S HLTB ID '
+                    f'{hltb_id}, ZÍSKÁNO {len(matches)}:',
                     **print_args)
                 for match in matches:
                     colorprint(msg=self.format_result(match), **print_args)
-            return matches[0]
+                time.sleep(self.error_sleep_delay)
+                return None
+            else:
+                return matches[0]
 
         best_result = results[0]
         if best_result.similarity != 1 or best_result.game_name != game.title:
@@ -241,6 +249,7 @@ class HLTB():
                 [self.format_result(result) for result in results]
             )
             colorprint(msg=candidates, **details_print_args)
+            time.sleep(self.error_sleep_delay)
             return None
 
         return best_result
@@ -304,6 +313,7 @@ class HLTB():
         if self.args.cache_ttl <= 0:
             print('Vynuceno obnovení informací pro všechny tituly')
 
+        query_errors = 0
         for index, game in enumerate(self.games, start=1):
             progress_str = '({:={}}/{})'.format(index, len(str(len(self.games))),
                 len(self.games))
@@ -316,7 +326,11 @@ class HLTB():
             hltb_result = self.query_hltb(game, progress=progress_str)
             if hltb_result:
                 self.process_hltb_result(game, hltb_result)
+            if not hltb_result and game.dh_id not in self.ignored:
+                query_errors += 1
         print(f'Zpracováno {len(self.games)} her')
+        if query_errors:
+            print_error(f'Počet chyb během zpracování: {query_errors}')
 
         self.save_cache()
 
