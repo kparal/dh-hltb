@@ -205,7 +205,7 @@ class HLTB():
             hltb_id = None
             title = game.title
 
-        results = HowLongToBeat().search(title)
+        results = HowLongToBeat(input_minimum_similarity=0).search(title)
 
         if results is None:
             print_error(f'CHYBA SPOJENÍ NEBO NEPLATNÝ DOTAZ!')
