@@ -222,7 +222,8 @@ class HLTB():
             prefix = ''
 
         if not results:
-            colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ! (DH ID: {game.dh_id})', **print_args)
+            colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ PRO "{title}"! '
+                f'(DH ID: {game.dh_id})', **print_args)
             time.sleep(self.error_sleep_delay)
             return None
 
@@ -232,10 +233,10 @@ class HLTB():
             matches = [result for result in results if result.game_id == hltb_id]
             if len(matches) != 1:
                 colorprint(msg='OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ S HLTB ID '
-                    f'{hltb_id}, ZÍSKÁNO {len(matches)}:',
-                    **print_args)
-                for match in matches:
-                    colorprint(msg=self.format_result(match), **print_args)
+                    f'{hltb_id}, ZÍSKÁNO {len(matches)}\nVÝSLEDKY HLEDÁNÍ '
+                    f'"{title}":', **print_args)
+                for result in results:
+                    colorprint(msg=self.format_result(result), **print_args)
                 time.sleep(self.error_sleep_delay)
                 return None
             else:
@@ -243,8 +244,8 @@ class HLTB():
 
         best_result = results[0]
         if best_result.similarity != 1 or best_result.game_name != game.title:
-            colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ! (DH ID: {game.dh_id})',
-                **print_args)
+            colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ PRO "{title}"! '
+                f'(DH ID: {game.dh_id})', **print_args)
             candidates = '\n\n'.join(
                 [self.format_result(result) for result in results]
             )
