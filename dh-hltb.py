@@ -130,7 +130,7 @@ def parse_dh(html_filename: str) -> List[Game]:
     for dh_game in dh_games.children:
         game = Game()
         game.dh_id = dh_game['data-id']
-        title_tag = dh_game.select_one('a.game-title')
+        title_tag = dh_game.select_one('a.item-title')
         game.title = str(title_tag.string)
         year = title_tag.next_sibling.string.strip().replace('(','').replace(')','')
         if year.isdecimal():
