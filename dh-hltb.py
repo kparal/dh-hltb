@@ -25,6 +25,7 @@ import time
 # external modules
 import yaml
 from bs4 import BeautifulSoup
+import howlongtobeatpy
 from howlongtobeatpy import HowLongToBeat, HowLongToBeatEntry
 import colorama
 import pyexcel
@@ -205,7 +206,9 @@ class HLTB():
             hltb_id = None
             title = game.title
 
-        results = HowLongToBeat(input_minimum_similarity=0).search(title)
+        results = HowLongToBeat(input_minimum_similarity=0).search(
+            game_name=title,
+            search_modifiers=howlongtobeatpy.HTMLRequests.SearchModifiers.INCLUDE_DLC)
 
         if results is None:
             print_error(f'CHYBA SPOJENÍ NEBO NEPLATNÝ DOTAZ!')
