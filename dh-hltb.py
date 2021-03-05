@@ -117,7 +117,7 @@ def parse_dh(html_filename: str) -> List[Game]:
 
     # find index of 'Datum dohrání' column, if available
     dohrani_column = None
-    headers = soup.select('div#user-games > table > thead > tr > th')
+    headers = soup.select('div#user-games > div > table > thead > tr > th')
     dohrani = [h for h in headers
         if 'Datum' in h.stripped_strings and 'dohrání' in h.stripped_strings]
     if dohrani:
@@ -127,7 +127,7 @@ def parse_dh(html_filename: str) -> List[Game]:
 
     # parse all the games
     games = []
-    dh_games = soup.select_one('div#user-games > table > tbody')
+    dh_games = soup.select_one('div#user-games > div > table > tbody')
     for dh_game in dh_games.children:
         game = Game()
         game.dh_id = dh_game['data-id']
