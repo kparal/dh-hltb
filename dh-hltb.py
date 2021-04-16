@@ -206,13 +206,25 @@ class HLTB():
             hltb_id = None
             title = game.title
 
-        results = HowLongToBeat(input_minimum_similarity=0).search(
-            game_name=title,
-            search_modifiers=howlongtobeatpy.HTMLRequests.SearchModifiers.INCLUDE_DLC)
+        tried_our_best = False
+        while True:
+            results = HowLongToBeat(input_minimum_similarity=0).search(
+                game_name=title,
+                search_modifiers=howlongtobeatpy.HTMLRequests.SearchModifiers.INCLUDE_DLC)
 
-        if results is None:
-            print_error(f'CHYBA SPOJENÍ NEBO NEPLATNÝ DOTAZ!')
-            raise HLTBError
+            if results or tried_our_best:
+                break
+
+            if results is None:
+                print_error('CHYBA SPOJENÍ NEBO NEPLATNÝ DOTAZ!')
+                raise HLTBError
+
+            if not results:
+                title = self.more_searchable_name(title)
+                colorprint(msg=f'Nic nenalezeno, zkouším hledat: {title}',
+                           color=Color.INFO)
+                tried_our_best = True
+                continue
 
         if game.dh_id in self.ignored:
             # this happens if you force-include ignored games for querying
@@ -245,8 +257,17 @@ class HLTB():
             else:
                 return matches[0]
 
-        best_result = results[0]
-        if best_result.similarity != 1 or best_result.game_name != game.title:
+        good_match_possible = True
+        if len(results) >= 2 and results[0].similarity == results[1].similarity:
+            # we can't reliably distinguish several matches with the same similarity
+            good_match_possible = False
+        if (results[0].game_name != game.title and
+                not self.equal_names(results[0].game_name, game.title)):
+            # if the most similar result doesn't have the exact or almost equal
+            # name, we can't say whether it is what we're looking for
+            good_match_possible = False
+
+        if not good_match_possible:
             colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ PRO "{title}"! '
                 f'(DH ID: {game.dh_id})', **print_args)
             candidates = '\n\n'.join(
@@ -256,7 +277,19 @@ class HLTB():
             time.sleep(self.error_sleep_delay)
             return None
 
-        return best_result
+        # now we have a good match, results[0]
+        best_match = results[0]
+
+        # if we matched by title (not by id) and the title match was not exact,
+        # inform the user
+        if (best_match.game_name != game.title and
+                game.dh_id not in self.mapping):
+            colorprint(msg=f'Přiřazen velice podobný název: {best_match.game_name}',
+                       color=Color.INFO)
+        # FIXME: print also the year, when available
+        # https://github.com/ScrappyCocco/HowLongToBeat-PythonAPI/issues/8
+
+        return best_match
 
     @staticmethod
     def format_result(result: dict):
@@ -429,12 +462,36 @@ class HLTB():
 
     @staticmethod
     def bool2str(value: bool) -> str:
-        if value == True:
+        if value is True:
             return 'ano'
-        elif value == False:
+        elif value is False:
             return 'ne'
         else:
             return str(value)
+
+    @classmethod
+    def equal_names(cls, name1: str, name2: str) -> bool:
+        '''Return whether two game names are basically the same, just differing
+        in unimportant details like letter casing or an extra colon.'''
+        names = [name1, name2]
+        for index, name in enumerate(names):
+            name = cls.more_searchable_name(name)
+            name = name.casefold()
+            names[index] = name
+        name1, name2 = names
+        return name1 == name2
+
+    @staticmethod
+    def more_searchable_name(name: str) -> str:
+        '''Convert a game name to a more searchable variant, i.e. remove or
+        replace characters which HLTB has a problem with (like an extra colon).
+        '''
+        name = name.replace(':', ' ')
+        name = name.replace('–', ' ')
+        name = name.replace('-', ' ')
+        name = ' '.join(name.split())  # remove multiple spaces
+        name = name.strip()
+        return name
 
     def export_table_data(self) -> List[List[str]]:
         link_template = 'https://www.databaze-her.cz/h{}'
