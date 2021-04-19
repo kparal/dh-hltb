@@ -16,21 +16,18 @@
   - '16160' # EVERSPACE: Encounters
   - '3688'  # Moorhuhn X
   - '764'   # Bulánci
-'17936':
-  'hltb_id': '71090'
-  'hltb_title': 'Pilgrims (2019)'
-'14984':
-  'hltb_id': '23051'
-  'hltb_title': 'FRAMED (2014)'
-'14759':
-  'hltb_id': '34553'
-  'hltb_title': 'Grip'
-'12108':
-  'hltb_id': '39367'
-  'hltb_title': 'Everspace'
-'12856':
+'64':  # Fahrenheit
+  'hltb_id': '4672'
+  'hltb_title': 'Indigo Prophecy / Fahrenheit'
+'12856': # Planescape: Torment: Enhanced Edition
   'hltb_id': '7093'
   'hltb_title': 'Planescape: Torment'
-'12578':
-  'hltb_id': '44590'
-  'hltb_title': 'Prey (2017)'
+'444':  # Heroes of Might and Magic III: The Restoration of Erathia
+  'hltb_id': '4425'
+  'hltb_title': 'Heroes of Might and Magic III'
+'1970':  # Disney's Duck Tales: The Quest for Gold
+  'hltb_id': '12939'
+  'hltb_title': 'DuckTales: The Quest for Gold'
+'1135':  # Minesweeper
+  'hltb_id': '6073'
+  'hltb_title': 'Minesweeper (Windows)'
