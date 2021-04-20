@@ -1,4 +1,4 @@
-howlongtobeatpy >= 0.1.17
+howlongtobeatpy >= 0.1.18
 beautifulsoup4
 pyyaml
 colorama

@@ -293,8 +293,12 @@ class HLTB():
 
     @staticmethod
     def format_result(result: dict):
+        if result.game_name_suffix:
+            name = f'{result.game_name} {result.game_name_suffix}'
+        else:
+            name = result.game_name
         return f'''\
-    Název: {result.game_name}
+    Název: {name}
     HLTB ID: {result.game_id}
     Podobnost: {result.similarity}'''
 
