@@ -18,14 +18,12 @@ import copy
 import dataclasses
 import csv
 import collections
-from typing import List
-from unicodedata import numeric
+from typing import List, Iterable, Generator
 import enum
 import time
 # external modules
 import yaml
 from bs4 import BeautifulSoup
-import howlongtobeatpy
 from howlongtobeatpy import HowLongToBeat, HowLongToBeatEntry
 import colorama
 import pyexcel
@@ -85,7 +83,7 @@ ignorovat).
 
 @dataclasses.dataclass
 class Game:
-    dh_id: str = None
+    dh_id: int = None
     title: str = None
     year: int = None
     wantplay: bool = None
@@ -93,11 +91,12 @@ class Game:
     finished_ts: str = None
     owned: bool = None
 
-    hltb_id: str = None
+    hltb_id: int = None
     # time unit is implied to be 'hours'
     time_main: float = None
     time_extra: float = None
     time_complete: float = None
+    time_all: float = None
     hltb_query_ts: str = None
 
     _cache_keys = [
@@ -105,6 +104,7 @@ class Game:
         'time_main',
         'time_extra',
         'time_complete',
+        'time_all',
         'hltb_query_ts',
     ]
 
@@ -130,7 +130,7 @@ def parse_dh(html_filename: str) -> List[Game]:
     dh_games = soup.select_one('div#user-games > div > table > tbody')
     for dh_game in dh_games.children:
         game = Game()
-        game.dh_id = dh_game['data-id']
+        game.dh_id = int(dh_game['data-id'])
         title_tag = dh_game.select_one('a.item-title')
         game.title = str(title_tag.string)
         year = title_tag.next_sibling.string.strip().replace('(','').replace(')','')
@@ -210,7 +210,7 @@ class HLTB():
         while True:
             results = HowLongToBeat(input_minimum_similarity=0).search(
                 game_name=title,
-                search_modifiers=howlongtobeatpy.HTMLRequests.SearchModifiers.INCLUDE_DLC)
+                similarity_case_sensitive=False)
 
             if results or tried_our_best:
                 break
@@ -229,16 +229,14 @@ class HLTB():
         if game.dh_id in self.ignored:
             # this happens if you force-include ignored games for querying
             print_args = {'color': Color.INFO}
-            details_print_args = print_args
             prefix = 'IGNOROVÁNO: '
         else:
             print_args = {'color': Color.ERROR, 'file': sys.stderr}
-            details_print_args = {'color': Color.ERROR_DETAILS, 'file': sys.stderr}
             prefix = ''
 
         if not results:
-            colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ PRO "{title}"! '
-                f'(DH ID: {game.dh_id})', **print_args)
+            colorprint(msg=f'{prefix}ŽÁDNÝ NÁLEZ PRO "{title}"! (DH ID: {game.dh_id})',
+                       **print_args)
             time.sleep(self.error_sleep_delay)
             return None
 
@@ -247,11 +245,12 @@ class HLTB():
         if hltb_id:
             matches = [result for result in results if result.game_id == hltb_id]
             if len(matches) != 1:
-                colorprint(msg='OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ S HLTB ID '
-                    f'{hltb_id}, ZÍSKÁNO {len(matches)}\nVÝSLEDKY HLEDÁNÍ '
-                    f'"{title}":', **print_args)
+                colorprint(msg=f'OČEKÁVÁN PŘESNĚ JEDEN NÁLEZ S HLTB ID {hltb_id}, ZÍSKÁNO '
+                               f'{len(matches)}\nVÝSLEDKY HLEDÁNÍ "{title}":', **print_args)
                 for result in results:
-                    colorprint(msg=self.format_result(result), **print_args)
+                    print('----')
+                    print(self.format_result(result))
+                print('----')
                 time.sleep(self.error_sleep_delay)
                 return None
             else:
@@ -262,18 +261,19 @@ class HLTB():
             # we can't reliably distinguish several matches with the same similarity
             good_match_possible = False
         if (results[0].game_name != game.title and
-                not self.equal_names(results[0].game_name, game.title)):
+                results[0].game_alias != game.title and
+                not self.equal_names([results[0].game_name, results[0].game_alias], [game.title])):
             # if the most similar result doesn't have the exact or almost equal
             # name, we can't say whether it is what we're looking for
             good_match_possible = False
 
         if not good_match_possible:
-            colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ PRO "{title}"! '
-                f'(DH ID: {game.dh_id})', **print_args)
-            candidates = '\n\n'.join(
-                [self.format_result(result) for result in results]
-            )
-            colorprint(msg=candidates, **details_print_args)
+            colorprint(msg=f'{prefix}ŽÁDNÝ PŘESNÝ NÁLEZ PRO "{title}"! (DH ID: {game.dh_id})',
+                       **print_args)
+            for result in results:
+                print('----')
+                print(self.format_result(result))
+            print('----')
             time.sleep(self.error_sleep_delay)
             return None
 
@@ -283,67 +283,37 @@ class HLTB():
         # if we matched by title (not by id) and the title match was not exact,
         # inform the user
         if (best_match.game_name != game.title and
+                best_match.game_alias != game.title and
                 game.dh_id not in self.mapping):
-            colorprint(msg=f'Přiřazen velice podobný název: {best_match.game_name}',
+            alias = f'(alias: {best_match.game_alias}) ' if best_match.game_alias else ''
+            colorprint(msg=f'Přiřazen velice podobný název: {best_match.game_name} {alias}'
+                           f'(rok vydání: {best_match.release_world})',
                        color=Color.INFO)
-        # FIXME: print also the year, when available
-        # https://github.com/ScrappyCocco/HowLongToBeat-PythonAPI/issues/8
 
         return best_match
 
     @staticmethod
     def format_result(result: dict):
-        if result.game_name_suffix:
-            name = f'{result.game_name} {result.game_name_suffix}'
-        else:
-            name = result.game_name
-        return f'''\
-    Název: {name}
-    HLTB ID: {result.game_id}
-    Podobnost: {result.similarity}'''
+        gamesdict = collections.OrderedDict([
+            ('Název', result.game_name),
+            ('Alias', result.game_alias),
+            ('Rok', result.release_world),
+            ('Vývojář', result.profile_dev),
+            ('Typ', result.game_type),
+            ('HLTB ID', result.game_id),
+            ('Podobnost', result.similarity),
+        ])
+        for key, value in gamesdict.copy().items():
+            if not value:
+                del gamesdict[key]
+
+        return '\n'.join([f'{key}: {value}' for key, value in gamesdict.items()])
 
     def process_hltb_result(self, game: Game, hltb_result: HowLongToBeatEntry):
-        supported_units = ['Hours', 'Mins', None]  # None for no measurements yet
-        if (hltb_result.gameplay_main_unit not in supported_units or
-            hltb_result.gameplay_main_extra_unit not in supported_units or
-            hltb_result.gameplay_completionist_unit not in supported_units
-            ):
-            print_error('Nepodporovaná časová jednotka!\n{}'.format(vars(hltb_result)))
-            raise NotImplementedError
-
-        supported_labels = ['Main Story', 'Main + Extra', 'Completionist',
-            'Single-Player', 'Solo', None]  # None for missing fields
-
-        if hltb_result.gameplay_main_label in supported_labels:
-            time_main = self.unicode_fraction(hltb_result.gameplay_main)
-            if time_main > 0:
-                if hltb_result.gameplay_main_unit == 'Mins':
-                    time_main = self.mins_to_hours(time_main)
-                game.time_main = time_main
-        else:
-            colorprint(Color.INFO,
-                f'Ignoruji herní režim: {hltb_result.gameplay_main_label}')
-
-        if hltb_result.gameplay_main_extra_label in supported_labels:
-            time_extra = self.unicode_fraction(hltb_result.gameplay_main_extra)
-            if time_extra > 0:
-                if hltb_result.gameplay_main_extra_unit == 'Mins':
-                    time_extra = self.mins_to_hours(time_extra)
-                game.time_extra = time_extra
-        else:
-            colorprint(Color.INFO,
-                f'Ignoruji herní režim: {hltb_result.gameplay_main_extra_label}')
-
-        if hltb_result.gameplay_completionist_label in supported_labels:
-            time_complete = self.unicode_fraction(hltb_result.gameplay_completionist)
-            if time_complete > 0:
-                if hltb_result.gameplay_completionist_unit == 'Mins':
-                    time_complete = self.mins_to_hours(time_complete)
-                game.time_complete = time_complete
-        else:
-            colorprint(Color.INFO,
-                f'Ignoruji herní režim: {hltb_result.gameplay_completionist_label}')
-
+        game.time_main = hltb_result.main_story
+        game.time_extra = hltb_result.main_extra
+        game.time_complete = hltb_result.completionist
+        game.time_all = hltb_result.all_styles
         game.hltb_id = hltb_result.game_id
         game.hltb_query_ts = datetime.datetime.now(
             datetime.timezone.utc).isoformat(timespec='seconds')
@@ -386,7 +356,7 @@ class HLTB():
             for key in Game._cache_keys:
                 cacheitem[key] = getattr(game, key)
             # just to make the cache easily inspectable
-            cacheitem['hltb_title'] = game.title
+            cacheitem['dh_title'] = game.title
 
             self.cache[game.dh_id] = cacheitem
         # save cache
@@ -443,27 +413,6 @@ class HLTB():
         ttl = datetime.timedelta(days=self.args.cache_ttl)
         return (now_ts - cache_ts) > ttl
 
-    # https://stackoverflow.com/a/50264056
-    @staticmethod
-    def unicode_fraction(number: str) -> float:
-        '''Convert unicode strings like 10½ to proper float numbers'''
-        if not isinstance(number, str):
-            return float(number)
-
-        if len(number) == 1:
-            v = numeric(number)
-        elif number[-1].isdigit():
-            # normal number, ending in [0-9]
-            v = float(number)
-        else:
-            # assume the last character is a vulgar fraction
-            v = float(number[:-1]) + numeric(number[-1])
-        return v
-
-    @staticmethod
-    def mins_to_hours(minutes: float) -> float:
-        return round(minutes / 60, ndigits=1)
-
     @staticmethod
     def bool2str(value: bool) -> str:
         if value is True:
@@ -474,16 +423,25 @@ class HLTB():
             return str(value)
 
     @classmethod
-    def equal_names(cls, name1: str, name2: str) -> bool:
-        '''Return whether two game names are basically the same, just differing
-        in unimportant details like letter casing or an extra colon.'''
-        names = [name1, name2]
-        for index, name in enumerate(names):
-            name = cls.more_searchable_name(name)
-            name = name.casefold()
-            names[index] = name
-        name1, name2 = names
-        return name1 == name2
+    def equal_names(cls, names1: Iterable[str], names2: Iterable[str]) -> bool:
+        '''Return whether two sets of game names are basically the same, just differing in
+        unimportant details like letter casing or an extra colon. Returns True if any name from
+        the first set is equal to any name from the second set. (Using sets allows you to specify
+        e.g. game name aliases).'''
+        def equalize(nameset: Iterable[str]) -> Generator[str, None, None]:
+            for name in nameset:
+                name = cls.more_searchable_name(name)
+                name = name.casefold()
+                yield name
+
+        names1 = list(equalize(names1))
+        names2 = list(equalize(names2))
+
+        for name1 in names1:
+            for name2 in names2:
+                if name1 == name2:
+                    return True
+        return False
 
     @staticmethod
     def more_searchable_name(name: str) -> str:
@@ -499,8 +457,8 @@ class HLTB():
 
     def export_table_data(self) -> List[List[str]]:
         link_template = 'https://www.databaze-her.cz/h{}'
-        header = ['Název', 'Rok', 'HLTB Main', 'HLTB Extra',
-            'HLTB Complete', 'Chci hrát', 'Dohráno', 'Vlastněno', 'Odkaz']
+        header = ['Název', 'Rok', 'HLTB Main', 'HLTB Extra', 'HLTB Complete', 'HLTB All Styles',
+                  'Chci hrát', 'Dohráno', 'Vlastněno', 'Odkaz']
 
         table = []
         # header
@@ -511,15 +469,10 @@ class HLTB():
                 continue
             link = link_template.format(game.dh_id)
             finished = game.finished_ts or self.bool2str(game.finished)
-            # empty time estimates are not helpful. If we don't have any number,
-            # use the closest one instead.
-            time_main = game.time_main or game.time_extra or game.time_complete
-            time_extra = game.time_extra or game.time_main or game.time_complete
-            time_complete = game.time_complete or game.time_extra or game.time_main
             table.append(
-                [game.title, game.year, time_main, time_extra, time_complete,
-                self.bool2str(game.wantplay), finished,
-                self.bool2str(game.owned), link]
+                [game.title, game.year, game.time_main or '', game.time_extra or '',
+                 game.time_complete or '', game.time_all or '', self.bool2str(game.wantplay),
+                 finished, self.bool2str(game.owned), link]
             )
 
         return table
@@ -539,14 +492,14 @@ class HLTB():
             os.path.abspath(self.args.output)))
 
     def export_csv(self) -> None:
-        print(f'Ukládám výsledky do CSV ...')
+        print('Ukládám výsledky do CSV ...')
         table = self.export_table_data()
         with open(self.args.output, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerows(table)
 
     def export_ods(self) -> None:
-        print(f'Ukládám výsledky do ODS ...')
+        print('Ukládám výsledky do ODS ...')
         # save main values
         table = self.export_table_data()
         sheet = pyexcel.Sheet(name='stats', sheet=table, name_columns_by_row=0)
@@ -560,10 +513,11 @@ class HLTB():
         sheet[lastrow, 2].formula = '=SUBTOTAL(9;C:C)'
         sheet[lastrow, 3].formula = '=SUBTOTAL(9;D:D)'
         sheet[lastrow, 4].formula = '=SUBTOTAL(9;E:E)'
+        sheet[lastrow, 5].formula = '=SUBTOTAL(9;F:F)'
         doc.save()
 
     def export_xlsx(self) -> None:
-        print(f'Ukládám výsledky do XLSX ...')
+        print('Ukládám výsledky do XLSX ...')
         table = self.export_table_data()
         workbook = openpyxl.Workbook()
         sheet = workbook.active
@@ -571,7 +525,7 @@ class HLTB():
         for row in table:
             sheet.append(row)
         # add hyperlinks to 'Link' column
-        for sheet_slice in sheet['I2:I{}'.format(sheet.max_row)]:
+        for sheet_slice in sheet['J2:J{}'.format(sheet.max_row)]:
             cell = sheet_slice[0]
             cell.hyperlink = cell.value
         # add auto filter
@@ -579,7 +533,7 @@ class HLTB():
         # add Sums
         sheet.append([])
         sheet.append(['Celkem (hodiny):', '', '=SUBTOTAL(109,C:C)', '=SUBTOTAL(109,D:D)',
-            '=SUBTOTAL(109,E:E)'])
+                     '=SUBTOTAL(109,E:E)', '=SUBTOTAL(109,F:F)'])
         sheet.cell(sheet.max_row, 1).font = openpyxl.styles.Font(bold=True)
         # set styles
         sheet.column_dimensions['C'].number_format = \
@@ -588,13 +542,13 @@ class HLTB():
         sheet.row_dimensions[1].font = openpyxl.styles.Font(bold=True)
         sheet.row_dimensions[1].alignment = openpyxl.styles.Alignment(
             horizontal='center')
-        sheet.column_dimensions['I'].font = openpyxl.styles.Font(
+        sheet.column_dimensions['J'].font = openpyxl.styles.Font(
             underline='single')
         # freeze views
         sheet.freeze_panes = 'A2'
         # resize columns
         colwidths = [('A', 45), ('B', 8), ('C', 14), ('D', 14), ('E', 18),
-            ('F', 13), ('G', 12), ('H', 13), ('I', 35)]
+                     ('F', 18), ('G', 13), ('H', 12), ('I', 13), ('J', 35)]
         for colname, width in colwidths:
             sheet.column_dimensions[colname].width = width
 
