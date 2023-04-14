@@ -538,7 +538,8 @@ class HLTB():
         # set styles
         sheet.column_dimensions['C'].number_format = \
             sheet.column_dimensions['D'].number_format = \
-            sheet.column_dimensions['E'].number_format = '# ##0'
+            sheet.column_dimensions['E'].number_format = \
+            sheet.column_dimensions['F'].number_format = '# ##0'
         sheet.row_dimensions[1].font = openpyxl.styles.Font(bold=True)
         sheet.row_dimensions[1].alignment = openpyxl.styles.Alignment(
             horizontal='center')
