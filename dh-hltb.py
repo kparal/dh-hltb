@@ -60,7 +60,7 @@ ignorovat).
         help='výstupní soubor ve formátu XLSX/ODS/CSV. Typ souboru se pozná '\
             'podle přípony. Nejlepší formátování má XLSX soubor. '\
             '[výchozí: %(default)s]')
-    parser.add_argument('--cache-ttl', metavar='DAYS', type=int, default=30,
+    parser.add_argument('--cache-ttl', metavar='DAYS', type=int, default=90,
         help='údaje her starší než tento počet dní se načtou z HLTB znovu. '\
             'Hodnota 0 vynutí nové načtení vždy. [výchozí: %(default)s]')
     parser.add_argument('-i', '--include-ignored', action='store_true',
